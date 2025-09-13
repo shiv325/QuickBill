@@ -14,7 +14,7 @@ jobs:
       ANDROID_SDK_ROOT: ${{ runner.temp }}/android-sdk
 
     steps:
-      # 1. Checkout repository
+      # 1. Checkout code
       - name: Checkout code
         uses: actions/checkout@v3
 
@@ -38,35 +38,3 @@ jobs:
         uses: actions/cache@v3
         with:
           path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: gradle-
-
-      # 5. Add google-services.json from secret
-      - name: Setup google-services.json
-        run: |
-          echo "${{ secrets.GOOGLE_SERVICES_JSON }}" > app/google-services.json
-
-      # 6. Make Gradlew executable
-      - name: Make Gradlew executable
-        run: chmod +x ./gradlew
-
-      # 7. Build APK
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug
-
-      # 8. Run Unit Tests
-      - name: Run Unit Tests
-        run: ./gradlew testDebug
-
-      # 9. (Optional) Build Signed Release APK
-      - name: Build Release APK
-        run: ./gradlew assembleRelease -Pandroid.injected.signing.store.file=${{ secrets.KEYSTORE_FILE }} -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
-
-      # 10. Upload APK as artifact
-      - name: Upload APK
-        uses: actions/upload-artifact@v3
-        with:
-          name: app-apk
-          path: app/build/outputs/apk/**/*.apk
