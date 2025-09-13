@@ -26,3 +26,5 @@ local.properties
 
 # Gradle
 gradle-app.setting
+
+/app/google-services.json
