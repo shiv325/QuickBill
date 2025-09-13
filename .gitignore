@@ -1,0 +1,28 @@
+*.iml
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+# Android Studio specific
+.idea/*/misc.xml
+.idea/*/gradle.xml
+.idea/*/assetWizardSettings.xml
+.idea/*/navEditor.xml
+
+# Keystore files (don’t share signing keys!)
+*.jks
+*.keystore
+
+# Gradle
+gradle-app.setting
