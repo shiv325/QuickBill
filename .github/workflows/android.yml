@@ -1,29 +1,69 @@
-name: Android CI
+name: Android CI/CD
 
 on:
   push:
     branches: [ main ]
   pull_request:
+    branches: [ main ]
 
 jobs:
   build:
+
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repo
+    # 1️⃣ Checkout the repo
+    - name: Checkout repository
       uses: actions/checkout@v3
 
-    - name: Set up JDK
+    # 2️⃣ Set up JDK
+    - name: Set up Java
       uses: actions/setup-java@v3
       with:
         distribution: temurin
         java-version: 17
 
+    # 3️⃣ Set up Android SDK
+    - name: Set up Android SDK
+      uses: android-actions/setup-android@v2
+      with:
+        api-level: 34
+        build-tools: 34.0.0
+
+    # 4️⃣ Generate google-services.json from secret
     - name: Create google-services.json
       run: |
+        mkdir -p app
         envsubst < google-services.template.json > app/google-services.json
       env:
         FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
 
-    - name: Build with Gradle
+    # 5️⃣ Cache Gradle dependencies
+    - name: Cache Gradle
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          gradle-${{ runner.os }}
+
+    # 6️⃣ Run lint checks
+    - name: Run lint
+      run: ./gradlew lint
+
+    # 7️⃣ Run unit tests
+    - name: Run unit tests
+      run: ./gradlew testDebugUnitTest
+
+    # 8️⃣ Build debug APK
+    - name: Build debug APK
       run: ./gradlew assembleDebug
+
+    # 9️⃣ Upload APK as artifact
+    - name: Upload APK
+      uses: actions/upload-artifact@v3
+      with:
+        name: debug-apk
+        path: app/build/outputs/apk/debug/app-debug.apk
