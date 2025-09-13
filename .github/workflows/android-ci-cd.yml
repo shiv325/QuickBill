@@ -47,27 +47,37 @@ jobs:
 
       # 5️⃣ Decode google-services.json from secret
       - name: Add Firebase config
-        run: |
-          echo "${{ secrets.FIREBASE_JSON_BASE64 }}" | base64 --decode > app/google-services.json
+        run: echo "${{ secrets.FIREBASE_JSON_BASE64 }}" | base64 --decode > app/google-services.json
 
       # 6️⃣ Decode Keystore from secret
       - name: Add Keystore
-        run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > quickbill.jks
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > quickbill.jks
 
       # 7️⃣ Make Gradle executable
       - name: Make Gradle executable
         run: chmod +x gradlew
 
-      # 8️⃣ Build Debug APK
+      # 8️⃣ Auto-increment version code and version name (only on main branch)
+      - name: Set Version Code & Version Name
+        if: github.ref == 'refs/heads/main'
+        run: |
+          VERSION_CODE=$(git rev-list --count HEAD)
+          VERSION_NAME="1.$(date +'%Y%m%d').${VERSION_CODE}"
+          echo "VERSION_CODE=${VERSION_CODE}" >> $GITHUB_ENV
+          echo "VERSION_NAME=${VERSION_NAME}" >> $GITHUB_ENV
+          echo "versionCode=${VERSION_CODE}" > version.properties
+          echo "versionName=${VERSION_NAME}" >> version.properties
+
+      
+      # 9️⃣ Build Debug APK
       - name: Build Debug APK
         run: ./gradlew assembleDebug --stacktrace
 
-      # 9️⃣ Run Unit Tests
+      # 🔟 Run Unit Tests
       - name: Run Unit Tests
         run: ./gradlew testDebugUnitTest --stacktrace
 
-      # 🔟 Run Instrumentation Tests on Emulator
+      # 1️⃣1️⃣ Run Instrumentation Tests on Emulator
       - name: Run Instrumentation Tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -76,16 +86,17 @@ jobs:
           target: google_apis
           script: ./gradlew connectedDebugAndroidTest --stacktrace
 
-      # 1️⃣1️⃣ Build and Sign Release APK (only on main branch)
+      # 1️⃣2️⃣ Build and Sign Release APK (only on main branch)
       - name: Build Release APK
         if: github.ref == 'refs/heads/main'
         run: ./gradlew assembleRelease \
           -Pandroid.injected.signing.store.file=quickbill.jks \
           -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
           -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
-          -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
+          -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }} \
+          -PversionCode=${{ env.VERSION_CODE }}
 
-      # 1️⃣2️⃣ Upload APK Artifacts
+      # 1️⃣3️⃣ Upload APK Artifacts
       - name: Upload APKs
         uses: actions/upload-artifact@v3
         with:
@@ -94,12 +105,22 @@ jobs:
             app/build/outputs/apk/debug/app-debug.apk
             app/build/outputs/apk/release/app-release.apk
 
-      # 1️⃣3️⃣ Deploy Release APK to Firebase App Distribution
+      # 1️⃣4️⃣ Deploy Release APK to Firebase App Distribution
       - name: Deploy to Firebase
         if: github.ref == 'refs/heads/main'
         uses: wzieba/Firebase-Distribution-Github-Action@v1
         with:
-          appId: ${{ secrets.FIREBASE_APP_ID }}        # Firebase App ID
-          token: ${{ secrets.FIREBASE_TOKEN }}        # Firebase CI token
-          groups: "testers"                            # Tester groups
+          appId: ${{ secrets.FIREBASE_APP_ID }}
+          token: ${{ secrets.FIREBASE_TOKEN }}
+          groups: "testers"
           file: app/build/outputs/apk/release/app-release.apk
+
+      # 1️⃣5️⃣ Create GitHub Tag for Release (optional)
+      - name: Create GitHub Tag
+        if: github.ref == 'refs/heads/main'
+        run: |
+          VERSION_NAME="v$(date +'%Y.%m.%d')-${{ env.VERSION_CODE }}"
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          git tag -a "$VERSION_NAME" -m "Release $VERSION_NAME"
+          git push origin "$VERSION_NAME"
