@@ -1,3 +1,17 @@
+import java.util.Properties
+import java.io.FileInputStream
+
+val versionPropsFile = file("version.properties")
+var versionCode = 1
+var versionName = "1.0"
+
+if (versionPropsFile.exists()) {
+    val props = Properties()
+    props.load(FileInputStream(versionPropsFile))
+    versionCode = props["versionCode"].toString().toInt()
+    versionName = props["versionName"].toString()
+}
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
